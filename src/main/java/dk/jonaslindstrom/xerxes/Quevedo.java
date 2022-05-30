@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 
 /** Simple demo of a chess game in a console using the Xerces engine */
-public class Xerces {
+public class Quevedo {
 
   public static void main(String[] arguments) {
     State state = State.defaultStartingPosition();
