@@ -1,20 +1,27 @@
-package dk.jonaslindstrom.xerxes;
+package dk.jonaslindstrom.quevedo;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import dk.jonaslindstrom.quevedo.ai.ConsolePlayer;
+import dk.jonaslindstrom.quevedo.ai.Player;
+import dk.jonaslindstrom.quevedo.moves.Move;
 
-/** Simple demo of a chess game in a console using the Xerces engine */
+/**
+ * Simple demo of a chess game in a console between a player and a AI.
+ */
 public class Quevedo {
 
-  public static void main(String[] arguments) {
+  public static void main(String[] arguments) throws InterruptedException {
     State state = State.defaultStartingPosition();
 
-    int status = 0;
+    Player white = new ConsolePlayer(); //new RandomPlayer(new Random(1234));
+    Player black = new ConsolePlayer();
 
-    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+    boolean isWhite = true;
+
+    int i = 0;
 
     while (true) {
+
+      System.out.println("Move " + (i / 2) + 1);
       System.out.println(state);
 
       if (state.mate()) {
@@ -27,25 +34,28 @@ public class Quevedo {
       }
       System.out.println("Turn: " + state.getTurn());
 
-      Move move = null;
-      try {
-        String input = reader.readLine();
+      Thread.sleep(1000);
 
-        try {
-          move = PGNParser.parse(input, state);
-        } catch (Exception e) {
-          System.out.println("Unable to parse move '" + input + "': " + e.getMessage());
-          continue;
-        }
-      } catch (IOException e) {
-        e.printStackTrace();
+      Move move;
+      if (isWhite) {
+        move = white.apply(state);
+      } else {
+        move = black.apply(state);
       }
+
+      if (!state.legalMoves().contains(move)) {
+        throw new IllegalArgumentException("Illegal move: " + move);
+      }
+
       state = state.applyAndDeleteCache(move);
+      System.out.println(move);
+      isWhite = !isWhite;
+      i++;
+      Thread.sleep(1000);
 
     }
 
     System.out.println(state.getPGN());
-
   }
 
 }

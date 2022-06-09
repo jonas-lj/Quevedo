@@ -1,11 +1,14 @@
-package dk.jonaslindstrom.xerxes;
+package dk.jonaslindstrom.quevedo.moves;
 
+import dk.jonaslindstrom.quevedo.Position;
+import dk.jonaslindstrom.quevedo.pieces.Piece;
 import java.util.Objects;
-import java.util.function.UnaryOperator;
+import java.util.function.Function;
 import org.apache.commons.collections4.BidiMap;
 import org.apache.commons.collections4.bidimap.DualHashBidiMap;
 
-public class Move implements UnaryOperator<BidiMap<Position, Piece>> {
+public class Move implements
+    Function<BidiMap<Position, Piece>, BidiMap<Position, Piece>> {
 
   private final Piece piece;
   private final Position from;
@@ -29,6 +32,7 @@ public class Move implements UnaryOperator<BidiMap<Position, Piece>> {
     return to;
   }
 
+  /** Apply this move to the given board. The map given as a parameter should <b>not</b> be modified. */
   public BidiMap<Position, Piece> apply(BidiMap<Position, Piece> board) {
     BidiMap<Position, Piece> result = new DualHashBidiMap<>(board);
 
@@ -70,10 +74,8 @@ public class Move implements UnaryOperator<BidiMap<Position, Piece>> {
 
   @Override
   public String toString() {
-    return "Move{" +
-        "piece=" + piece +
-        ", from=" + from +
-        ", to=" + to +
-        '}';
+    return getPiece().getAlgebraicNotation()
+        + getFrom()
+        + getTo();
   }
 }

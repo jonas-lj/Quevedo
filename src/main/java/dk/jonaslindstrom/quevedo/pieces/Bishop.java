@@ -1,9 +1,8 @@
-package dk.jonaslindstrom.xerxes.pieces;
+package dk.jonaslindstrom.quevedo.pieces;
 
-import dk.jonaslindstrom.xerxes.State;
-import dk.jonaslindstrom.xerxes.Move;
-import dk.jonaslindstrom.xerxes.Piece;
-import dk.jonaslindstrom.xerxes.Position;
+import dk.jonaslindstrom.quevedo.State;
+import dk.jonaslindstrom.quevedo.moves.Move;
+import dk.jonaslindstrom.quevedo.Position;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;

@@ -1,46 +1,53 @@
-package dk.jonaslindstrom.xerxes;
+package dk.jonaslindstrom.quevedo;
 
 import dk.jonaslindstrom.math.util.Pair;
-import dk.jonaslindstrom.xerxes.Piece.Color;
-import dk.jonaslindstrom.xerxes.pieces.Bishop;
-import dk.jonaslindstrom.xerxes.pieces.King;
-import dk.jonaslindstrom.xerxes.pieces.Knight;
-import dk.jonaslindstrom.xerxes.pieces.Pawn;
-import dk.jonaslindstrom.xerxes.pieces.Queen;
-import dk.jonaslindstrom.xerxes.pieces.Rook;
+import dk.jonaslindstrom.quevedo.pieces.Piece;
+import dk.jonaslindstrom.quevedo.pieces.Piece.Color;
+import dk.jonaslindstrom.quevedo.moves.Move;
+import dk.jonaslindstrom.quevedo.pieces.Bishop;
+import dk.jonaslindstrom.quevedo.pieces.King;
+import dk.jonaslindstrom.quevedo.pieces.Knight;
+import dk.jonaslindstrom.quevedo.pieces.Pawn;
+import dk.jonaslindstrom.quevedo.pieces.Queen;
+import dk.jonaslindstrom.quevedo.pieces.Rook;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.apache.commons.collections4.BidiMap;
 import org.apache.commons.collections4.bidimap.DualHashBidiMap;
+import org.apache.commons.collections4.bidimap.UnmodifiableBidiMap;
 
 public class State {
 
   private final Map<Move, State> cache = new HashMap<>();
   private final BidiMap<Position, Piece> board;
   private final Piece.Color turn;
-  private final Pair<State, LoggedMove> parent;
+  private final Pair<State, Move> parent;
 
   /**
    * Apply move to generate new state state
    */
   private State(State state, Move move) {
     this.board = move.apply(state.board);
-    this.turn = state.turn == Color.WHITE ? Color.BLACK : Color.WHITE;
+    this.turn = Utils.otherColor(state.turn);
 
-    this.parent = new Pair<>(state, new LoggedMove(move,
-        Objects.nonNull(state.board.get(move.getTo())), check()));
+    this.parent = new Pair<>(state, move);
   }
 
   /** Create a game with the given position */
-  public State(Map<Position, Piece> pieces, Piece.Color turn) {
+  private State(Map<Position, Piece> pieces, Piece.Color turn) {
     this.board = new DualHashBidiMap<>(pieces);
     this.turn = turn;
     this.parent = null;
+  }
+
+  public Move getLastMove() {
+    return parent != null ? parent.getSecond() : null;
   }
 
   /**
@@ -112,38 +119,29 @@ public class State {
    * @return A map mapping the found pieces to their current position.
    */
   public Map<Piece, Position> getPieces(String type, Color color) {
-    return allPositions().map(position -> new Pair<>(get(position), position))
-        .filter(pair -> pair.first != null)
-        .filter(pair -> pair.first.getAlgebraicNotation().equals(type))
-        .filter(pair -> pair.first.getColor().equals(color))
-        .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond));
+    return getPieces(piece -> piece.getColor() == color && piece.getAlgebraicNotation().equals(type));
   }
 
-  /**
-   * Get all pieces of the given color still in the game.
-   *
-   * @param color
-   * @return A map mapping the found pieces to their current position.
-   */
   public Map<Piece, Position> getPieces(Color color) {
-    return allPositions().map(position -> new Pair<>(get(position), position))
-        .filter(pair -> pair.first != null)
-        .filter(pair -> pair.first.getColor().equals(color))
-        .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond));
+    return getPieces(piece -> piece.getColor() == color);
+  }
+
+  public Map<Piece, Position> getPieces(Predicate<Piece> predicate) {
+    return board.values().stream().filter(predicate).collect(Collectors.toMap(
+            piece -> piece,
+            piece -> board.inverseBidiMap().get(piece)));
   }
 
   public boolean check(Color color) {
-    Map<Piece, Position> opponentsPieces = getPieces(
-        color == Color.WHITE ? Color.BLACK : Color.WHITE);
-    Position kingPosition = getPieces("K", color).values().stream().findFirst().orElseThrow();
-    for (Piece piece : opponentsPieces.keySet()) {
-      if (piece.legalMoves(opponentsPieces.get(piece), this)
-          .contains(new Move(piece, opponentsPieces.get(piece), kingPosition))) {
-        return true;
-      }
-    }
-    return false;
+    return Utils.getKing(color, this).isThreatened(this);
   }
+
+  public List<Move> legalMoves() {
+    return getPieces(turn).keySet().stream()
+        .flatMap(piece -> piece.legalMoves(board.inverseBidiMap().get(piece), this).stream()).filter(
+            this::isValid).collect(Collectors.toList());
+  }
+
 
   /**
    * Return true if the player to move is in check.
@@ -172,7 +170,9 @@ public class State {
    * Return true if the given {@link Move} is valid and legal in this game
    */
   public boolean isValid(Move move) {
-    if (move.getPiece().getColor() != turn) {
+
+    // No such piece
+    if (get(move.getFrom()) == null) {
       return false;
     }
 
@@ -181,7 +181,7 @@ public class State {
       return false;
     }
 
-    return move.getPiece().legalMoves(move.getFrom(), this).contains(move);
+    return true;
   }
 
   /** Get the position of the given {@link Piece} or null if the piece is no longer in the game */
@@ -206,7 +206,7 @@ public class State {
     if (Math.floorMod(parentPGN.first, 2) == 0) {
       pgn = pgn + " " + (parentPGN.first / 2 + 1) + ".";
     }
-    pgn = pgn + " " + parent.second.toString();
+    pgn = pgn + " " + PGNParser.encode(parent.second, parent.first);
     return new Pair<>(parentPGN.getFirst() + 1, pgn);
   }
 
@@ -281,6 +281,20 @@ public class State {
 
   public Color getTurn() {
     return turn;
+  }
+
+  // TODO: Unnecessary recursion
+  public boolean hasMoved(Piece piece) {
+
+    if (parent == null) {
+      return false;
+    }
+
+    if (parent.second.getPiece().equals(piece)) {
+      return true;
+    }
+
+    return parent.first.hasMoved(piece);
   }
 
 }

@@ -1,10 +1,9 @@
-package dk.jonaslindstrom.xerxes.pieces;
+package dk.jonaslindstrom.quevedo.pieces;
 
-import dk.jonaslindstrom.xerxes.Castling;
-import dk.jonaslindstrom.xerxes.State;
-import dk.jonaslindstrom.xerxes.Move;
-import dk.jonaslindstrom.xerxes.Piece;
-import dk.jonaslindstrom.xerxes.Position;
+import dk.jonaslindstrom.quevedo.moves.Castling;
+import dk.jonaslindstrom.quevedo.State;
+import dk.jonaslindstrom.quevedo.moves.Move;
+import dk.jonaslindstrom.quevedo.Position;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -39,9 +38,9 @@ public class Rook extends Piece {
 
     // Castlings are assigned to rooks since they define them uniquely
     int y = this.getColor() == Color.WHITE ? 0 : 7;
-    if (hasNotMoved()) {
+    if (!state.hasMoved(this) && position.y == y) { // Ensure promoted rooks cannot castle
       Piece king = state.get(4, y);
-      if (king != null && king.hasNotMoved()) {
+      if (king != null && !state.hasMoved(king)) {
         if (state.getPosition(this).x == 0) {
           if (state.get(1,y) == null && state.get(2, y) == null && state.get(3, y) == null) {
             result.add(new Castling(this, false));

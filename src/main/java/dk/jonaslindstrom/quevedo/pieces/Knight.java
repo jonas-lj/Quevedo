@@ -1,9 +1,8 @@
-package dk.jonaslindstrom.xerxes.pieces;
+package dk.jonaslindstrom.quevedo.pieces;
 
-import dk.jonaslindstrom.xerxes.State;
-import dk.jonaslindstrom.xerxes.Move;
-import dk.jonaslindstrom.xerxes.Piece;
-import dk.jonaslindstrom.xerxes.Position;
+import dk.jonaslindstrom.quevedo.State;
+import dk.jonaslindstrom.quevedo.moves.Move;
+import dk.jonaslindstrom.quevedo.Position;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -21,7 +20,7 @@ public class Knight extends Piece {
 
   @Override
   public List<Move> legalMoves(Position position, State state) {
-    return Stream.of(
+    List<Move> result = Stream.of(
         position.add(2, 1),
         position.add(2, -1),
         position.add(-2, 1),
@@ -34,6 +33,7 @@ public class Knight extends Piece {
         .filter(p -> state.get(p) == null || state.get(p).getColor() != this.getColor())
         .map(p -> new Move(this, position, p))
         .collect(Collectors.toList());
+    return result;
   }
 
   @Override

@@ -1,6 +1,8 @@
-package dk.jonaslindstrom.xerxes;
+package dk.jonaslindstrom.quevedo.moves;
 
-import dk.jonaslindstrom.xerxes.Piece.Color;
+import dk.jonaslindstrom.quevedo.pieces.Piece;
+import dk.jonaslindstrom.quevedo.pieces.Piece.Color;
+import dk.jonaslindstrom.quevedo.Position;
 import org.apache.commons.collections4.BidiMap;
 
 public class Castling extends Move {

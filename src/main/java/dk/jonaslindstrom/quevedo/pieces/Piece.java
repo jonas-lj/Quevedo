@@ -1,18 +1,18 @@
-package dk.jonaslindstrom.xerxes;
+package dk.jonaslindstrom.quevedo.pieces;
 
+import dk.jonaslindstrom.quevedo.Position;
+import dk.jonaslindstrom.quevedo.State;
+import dk.jonaslindstrom.quevedo.Utils;
+import dk.jonaslindstrom.quevedo.moves.Move;
 import java.util.List;
+import java.util.Map;
 
 public abstract class Piece {
 
   private final Color color;
-  private boolean hasMoved;
 
   protected Piece(Color color) {
     this.color = color;
-  }
-
-  public boolean hasNotMoved() {
-    return !hasMoved;
   }
 
   protected static List<Move> untilIllegal(List<Move> moves, State state) {
@@ -42,16 +42,20 @@ public abstract class Piece {
 
   public abstract int getValue();
 
+  /** Returns a list of moves this piece can make in the current state. It does not consider whether it would leave its king in check */
   public abstract List<Move> legalMoves(Position position, State state);
-
-  public void move(Move move) {
-    hasMoved = true;
-  }
 
   public abstract String getAlgebraicNotation();
 
   public enum Color {
     WHITE, BLACK
+  }
+
+  public boolean isThreatened(State state) {
+    Map<Piece, Position> opponentsPieces = state.getPieces(Utils.otherColor(color));
+    return opponentsPieces.keySet().stream()
+        .flatMap(piece -> piece.legalMoves(opponentsPieces.get(piece), state).stream())
+        .anyMatch(move -> move.getTo().equals(state.getPosition(this)));
   }
 
 }

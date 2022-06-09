@@ -1,6 +1,10 @@
-package dk.jonaslindstrom.xerxes;
+package dk.jonaslindstrom.quevedo;
 
-import dk.jonaslindstrom.xerxes.Piece.Color;
+import dk.jonaslindstrom.quevedo.moves.Castling;
+import dk.jonaslindstrom.quevedo.moves.Move;
+import dk.jonaslindstrom.quevedo.moves.Promotion;
+import dk.jonaslindstrom.quevedo.pieces.Piece;
+import dk.jonaslindstrom.quevedo.pieces.Piece.Color;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -8,7 +12,9 @@ import java.util.stream.Collectors;
 
 public class PGNParser {
 
-  /** Parse a game in PGN */
+  /**
+   * Parse a game in PGN
+   */
   public static List<State> parse(String pgn) {
 
     pgn = pgn.replace("\n", " ");
@@ -42,29 +48,60 @@ public class PGNParser {
     return states;
   }
 
+  public static Move parseAndCheck(String move, State state) throws IllegalArgumentException {
+    Move parsed = parse(move, state);
+    if (!state.legalMoves().contains(parsed)) {
+      throw new IllegalArgumentException("Illegal move");
+    }
+    return parsed;
+  }
+
   public static Move parse(String move, State state) {
+    List<Move> possibleMoves = parseAmbiguous(move, state);
+
+    if (possibleMoves.size() > 1) {
+      throw new IllegalArgumentException("Move not unique");
+    } else if (possibleMoves.size() == 0) {
+      throw new IllegalArgumentException("Move not allowed");
+    }
+    return possibleMoves.get(0);
+  }
+
+  public static List<Move> parseAmbiguous(String move, State state) {
 
     // Castling
     if (move.equals("O-O") | move.equals("0-0")) {
-      return new Castling(state.get(7, state.getTurn() == Color.WHITE ? 0 : 7), true);
+      return List.of(new Castling(state.get(7, state.getTurn() == Color.WHITE ? 0 : 7), true));
     } else if (move.equals("O-O-O") | move.equals("0-0-0")) {
-      return new Castling(state.get(0, state.getTurn() == Color.WHITE ? 0 : 7), true);
+      return List.of(new Castling(state.get(0, state.getTurn() == Color.WHITE ? 0 : 7), true));
     }
-    int i = move.length();
 
-    // Is check or mate
-    if (move.charAt(i - 1) == '+' | move.charAt(i - 1) == '#') {
-      i = i - 1;
+    // Remove characters not needed for parsing
+    move = move.replace("+", "").replace("!", "")
+        .replace("?", "").replace("#", "")
+        .replace("x", "");
+
+    // Promotion
+    if (move.contains("=")) {
+      String[] parts = move.split("=");
+      if (parts.length != 2) {
+        throw new IllegalArgumentException("Invalid move");
+      }
+
+      String type = parts[1];
+      List<Move> possibleMoves = parseAmbiguous(parts[0], state);
+      possibleMoves = possibleMoves.stream().filter(m -> m instanceof Promotion)
+          .filter(m -> ((Promotion) m).getType().equals(type)).collect(
+              Collectors.toList());
+
+      return possibleMoves;
     }
+
+    int i = move.length();
 
     // Target position
     i = i - 2;
     Position to = parsePosition(move.substring(i, i + 2));
-
-    // Capture
-    if (i > 0 && move.charAt(i - 1) == 'x') {
-      i = i - 1;
-    }
 
     // Piece type
     int j = 0;
@@ -77,36 +114,59 @@ public class PGNParser {
     // All pieces of the right color and type
     Map<Piece, Position> candidates = state.getPieces(type, state.getTurn());
 
-    List<Piece> candidate = candidates.keySet().stream()
-        .filter(piece -> piece.legalMoves(candidates.get(piece), state).stream().map(Move::getTo).anyMatch(p -> p.equals(to))).collect(
+    // Filter moves by the "move to" coordinate
+    List<Move> possibleMoves = candidates.keySet().stream()
+        .flatMap(piece -> piece.legalMoves(candidates.get(piece), state).stream())
+        .filter(x -> x.getTo().equals(to)).collect(
             Collectors.toList());
 
-    // If there's any letters left, they are starting coordinates
+    // Castlings has already been handled
+    possibleMoves = possibleMoves.stream().filter(m -> !(m instanceof Castling)).collect(Collectors.toList());
+
+    // If there's any letters left, they are starting coordinates to uniquely define the move
     if (i != j) {
-      String start = move.substring(j, j+1);
+      String start = move.substring(j, j + 1);
       if (start.matches("[1-8]")) {
-        candidate = candidate.stream().filter(piece -> candidates.get(piece).y == Integer.parseInt(start) - 1).collect(
-            Collectors.toList());
+        possibleMoves = possibleMoves.stream()
+            .filter(m -> candidates.get(m.getPiece()).y == Integer.parseInt(start) - 1).collect(
+                Collectors.toList());
       } else {
         int x = "abcdefgh".indexOf(start);
-        candidate = candidate.stream().filter(piece -> candidates.get(piece).x == x).collect(
-            Collectors.toList());
+        possibleMoves = possibleMoves.stream().filter(m -> candidates.get(m.getPiece()).x == x)
+            .collect(
+                Collectors.toList());
       }
     }
 
-    if (candidate.size() > 1) {
-      throw new IllegalArgumentException("Move not unique");
-    } else if (candidate.size() == 0) {
-      throw new IllegalArgumentException("Move not allowed");
-    }
-    Piece piece = candidate.get(0);
-    return new Move(piece, candidates.get(piece), to);
+    return possibleMoves;
   }
 
   private static Position parsePosition(String position) {
     int x = "abcdefgh".indexOf(position.substring(0, 1));
     int y = Integer.parseInt(position.substring(1, 2)) - 1;
     return new Position(x, y);
+  }
+
+  public static String encode(Move move, State state) {
+    String representation;
+    boolean capture = state.get(move.getTo()) != null;
+    boolean check = state.apply(move).check();
+    if (move instanceof Castling) {
+      Castling castling = ((Castling) move);
+      representation = castling.isKingSide() ? "0-0" : "0-0-0";
+    } else {
+      representation =
+          move.getPiece().getAlgebraicNotation()
+              + move.getFrom()
+              + (capture ? "x" : "")
+              + move.getTo()
+              + (check ? "+" : "");
+    }
+    return representation;
+  }
+
+  private boolean isLegal(Move move, State state) {
+    return state.legalMoves().contains(move);
   }
 
 }

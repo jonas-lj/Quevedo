@@ -1,4 +1,4 @@
-package dk.jonaslindstrom.xerxes;
+package dk.jonaslindstrom.quevedo;
 
 public class Position {
 
