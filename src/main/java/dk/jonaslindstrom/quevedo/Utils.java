@@ -12,4 +12,5 @@ public class Utils {
   public static Piece getKing(Color color, State state) {
     return state.getPieces("K", color).keySet().stream().findAny().orElseThrow();
   }
+
 }

@@ -19,11 +19,9 @@ public class Quevedo {
 
     boolean isWhite = true;
 
-    int i = 0;
 
     while (true) {
 
-      System.out.println("Move " + (i / 2) + 1);
       System.out.println(state);
 
       if (state.mate()) {
@@ -45,18 +43,16 @@ public class Quevedo {
         move = black.apply(state);
       }
 
-      if (!state.legalMoves().contains(move)) {
-        throw new IllegalArgumentException("Illegal move: " + move);
-      }
-
       state = state.applyAndDeleteCache(move);
       System.out.println(move);
       isWhite = !isWhite;
-      i++;
+
       Thread.sleep(1000);
 
+      System.out.println();
     }
 
+    System.out.println();
     System.out.println(state.getPGN());
   }
 

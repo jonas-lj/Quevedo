@@ -57,5 +57,27 @@ public class Promotion extends Move {
     return super.toString() + "=" + type;
   }
 
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
 
+    Promotion promotion = (Promotion) o;
+
+    return type != null ? type.equals(promotion.type) : promotion.type == null;
+  }
+
+  @Override
+  public int hashCode() {
+    int result = super.hashCode();
+    result = 31 * result + (type != null ? type.hashCode() : 0);
+    return result;
+  }
 }

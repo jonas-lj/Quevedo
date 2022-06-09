@@ -1,26 +1,24 @@
 package dk.jonaslindstrom.quevedo;
 
 import dk.jonaslindstrom.math.util.Pair;
-import dk.jonaslindstrom.quevedo.pieces.Piece;
-import dk.jonaslindstrom.quevedo.pieces.Piece.Color;
 import dk.jonaslindstrom.quevedo.moves.Move;
 import dk.jonaslindstrom.quevedo.pieces.Bishop;
 import dk.jonaslindstrom.quevedo.pieces.King;
 import dk.jonaslindstrom.quevedo.pieces.Knight;
 import dk.jonaslindstrom.quevedo.pieces.Pawn;
+import dk.jonaslindstrom.quevedo.pieces.Piece;
+import dk.jonaslindstrom.quevedo.pieces.Piece.Color;
 import dk.jonaslindstrom.quevedo.pieces.Queen;
 import dk.jonaslindstrom.quevedo.pieces.Rook;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.apache.commons.collections4.BidiMap;
 import org.apache.commons.collections4.bidimap.DualHashBidiMap;
-import org.apache.commons.collections4.bidimap.UnmodifiableBidiMap;
 
 public class State {
 
@@ -35,7 +33,6 @@ public class State {
   private State(State state, Move move) {
     this.board = move.apply(state.board);
     this.turn = Utils.otherColor(state.turn);
-
     this.parent = new Pair<>(state, move);
   }
 
@@ -91,10 +88,6 @@ public class State {
   /**
    * Get the {@link Piece} located at the given square or <code>null</code> if there is no {@link
    * Piece} on the square or if the square is outside the board.
-   *
-   * @param x
-   * @param y
-   * @return
    */
   public Piece get(int x, int y) {
     return get(new Position(x, y));
@@ -103,9 +96,6 @@ public class State {
   /**
    * Get the {@link Piece} located at the given square or <code>null</code> if there is no {@link
    * Piece} on the square or if the square is outside the board.
-   *
-   * @param position
-   * @return
    */
   public Piece get(Position position) {
     return board.getOrDefault(position, null);
@@ -113,10 +103,6 @@ public class State {
 
   /**
    * Get all pieces of the given type and color still in the current game.
-   *
-   * @param type
-   * @param color
-   * @return A map mapping the found pieces to their current position.
    */
   public Map<Piece, Position> getPieces(String type, Color color) {
     return getPieces(piece -> piece.getColor() == color && piece.getAlgebraicNotation().equals(type));
@@ -132,16 +118,16 @@ public class State {
             piece -> board.inverseBidiMap().get(piece)));
   }
 
+  /** Return whether the current players king is threatened */
   public boolean check(Color color) {
     return Utils.getKing(color, this).isThreatened(this);
   }
 
+  /** Return a list of all legal moves */
   public List<Move> legalMoves() {
     return getPieces(turn).keySet().stream()
-        .flatMap(piece -> piece.legalMoves(board.inverseBidiMap().get(piece), this).stream()).filter(
-            this::isValid).collect(Collectors.toList());
+        .flatMap(piece -> piece.legalMoves(board.inverseBidiMap().get(piece), this).stream()).collect(Collectors.toList());
   }
-
 
   /**
    * Return true if the player to move is in check.
@@ -166,23 +152,6 @@ public class State {
         .allMatch(state -> state.check(turn));
   }
 
-  /**
-   * Return true if the given {@link Move} is valid and legal in this game
-   */
-  public boolean isValid(Move move) {
-
-    // No such piece
-    if (get(move.getFrom()) == null) {
-      return false;
-    }
-
-    if (!get(move.getFrom()).equals(move.getPiece())) {
-      // Not the right piece
-      return false;
-    }
-
-    return true;
-  }
 
   /** Get the position of the given {@link Piece} or null if the piece is no longer in the game */
   public Position getPosition(Piece piece) {
@@ -214,8 +183,9 @@ public class State {
    * Apply the given move and return a new {@link State} with the given
    */
   public State apply(Move move) {
-    if (!isValid(move)) {
-      throw new IllegalArgumentException("Invalid move");
+
+    if (!legalMoves().contains(move)) {
+      throw new IllegalArgumentException("Illegal move");
     }
 
     // Cache move
@@ -224,8 +194,9 @@ public class State {
   }
 
   public State applyAndDeleteCache(Move move) {
-    if (!isValid(move)) {
-      throw new IllegalArgumentException("Invalid move");
+
+    if (!legalMoves().contains(move)) {
+      throw new IllegalArgumentException("Illegal move");
     }
 
     State newState;
@@ -263,7 +234,11 @@ public class State {
           sb.append("\u001B[46m");
         }
         if (p != null) {
-          sb.append(p).append("\033[0m");
+          if (p.isThreatened(this)) {
+            sb.append("\u001B[31m").append(p).append("\033[0m").append("\u001B[0m");
+          } else {
+            sb.append(p).append("\033[0m");
+          }
         } else {
           sb.append(" \033[0m");
         }
@@ -273,8 +248,6 @@ public class State {
         sb.append("\n");
       }
     }
-//    sb.append(turn).append(" to move\n");
-//    sb.append("Score: ").append(score()).append("\n");
 
     return sb.toString();
   }

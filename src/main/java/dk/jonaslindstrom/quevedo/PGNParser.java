@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import javax.swing.JProgressBar;
 
 public class PGNParser {
 
@@ -151,16 +152,28 @@ public class PGNParser {
     String representation;
     boolean capture = state.get(move.getTo()) != null;
     boolean check = state.apply(move).check();
+    boolean mate = state.apply(move).mate();
     if (move instanceof Castling) {
-      Castling castling = ((Castling) move);
+      Castling castling = (Castling) move;
       representation = castling.isKingSide() ? "0-0" : "0-0-0";
+    } else if (move instanceof Promotion) {
+      Promotion promotion = (Promotion) move;
+      representation = encode(new Move(move.getPiece(), move.getFrom(), move.getTo()), state);
+      representation = representation + "=" + promotion.getType();
     } else {
+      String mateOrCheck = "";
+      if (mate) {
+        mateOrCheck = "#";
+      } else if (check) {
+        mateOrCheck = "+";
+      }
+
       representation =
           move.getPiece().getAlgebraicNotation()
               + move.getFrom()
               + (capture ? "x" : "")
               + move.getTo()
-              + (check ? "+" : "");
+              + mateOrCheck;
     }
     return representation;
   }
