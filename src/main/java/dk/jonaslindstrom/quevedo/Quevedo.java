@@ -2,7 +2,9 @@ package dk.jonaslindstrom.quevedo;
 
 import dk.jonaslindstrom.quevedo.ai.ConsolePlayer;
 import dk.jonaslindstrom.quevedo.ai.Player;
+import dk.jonaslindstrom.quevedo.ai.RandomPlayer;
 import dk.jonaslindstrom.quevedo.moves.Move;
+import java.util.Random;
 
 /**
  * Simple demo of a chess game in a console between a player and a AI.
@@ -13,7 +15,7 @@ public class Quevedo {
     State state = State.defaultStartingPosition();
 
     Player white = new ConsolePlayer(); //new RandomPlayer(new Random(1234));
-    Player black = new ConsolePlayer();
+    Player black = new RandomPlayer(new Random(1234));
 
     boolean isWhite = true;
 
